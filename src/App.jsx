@@ -350,17 +350,17 @@ function App() {
       </div>
 
       {/* Footer com RSS */}
-      {rssItems.length > 0 && (
-        <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
-          <div className="animate-marquee whitespace-nowrap">
-            {rssItems.map((item, index) => (
-              <span key={index} className="mx-8">
-                📰 {item.title}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+    {rssUrl.includes('rss.app/embed') && (
+  <div style={{ position: 'fixed', bottom: 0, width: '100%', zIndex: 1000 }}>
+    <iframe
+      src={rssUrl}
+      width="100%"
+      height="50"
+      frameBorder="0"
+      scrolling="no"
+    ></iframe>
+  </div>
+)}
     </div>
   )
 }
