@@ -294,8 +294,6 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+    </div> {/* ← Este fecha o <div className="min-h-screen ..."> */}
   )
 }
-
-export default App
