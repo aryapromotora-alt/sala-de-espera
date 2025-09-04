@@ -31,8 +31,13 @@ const [hideHeader, setHideHeader] = useState(false)
 
 useEffect(() => {
   const saved = localStorage.getItem('playlist')
-  if (saved) {
-    setItems(JSON.parse(saved))
+  try {
+    const parsed = JSON.parse(saved)
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      setItems(parsed)
+    }
+  } catch (err) {
+    console.error('Erro ao carregar playlist:', err)
   }
 }, [])
 
