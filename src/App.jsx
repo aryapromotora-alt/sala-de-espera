@@ -18,6 +18,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [isLoadingRss, setIsLoadingRss] = useState(false)
 
+
   // Estados para adicionar novos itens
   const [newItem, setNewItem] = useState({
     type: 'image',
@@ -25,6 +26,8 @@ function App() {
     duration: 5000,
     title: ''
   })
+
+const [hideHeader, setHideHeader] = useState(false)
 
   // Função para adicionar item à lista
   const addItem = () => {
@@ -88,131 +91,128 @@ function App() {
     }
   }
 
-  // Controle de reprodução automática
-  useEffect(() => {
-    if (!isPlaying || items.length === 0) return
+// Controle de visibilidade do cabeçalho
+useEffect(() => {
+  if (isPlaying && items.length > 0) {
+    setHideHeader(true)
+  } else {
+    setHideHeader(false)
+  }
+}, [isPlaying, items])
 
-    const currentItem = items[currentIndex]
-    if (!currentItem) return
+const currentItem = items[currentIndex]
 
-    const timer = setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % items.length)
-    }, currentItem.duration)
+const renderContent = () => {
+  if (!currentItem) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Nenhum conteúdo adicionado</h2>
+          <p>Adicione slides, imagens, sites ou planilhas para começar</p>
+        </div>
+      </div>
+    )
+  }
 
-    return () => clearTimeout(timer)
-  }, [isPlaying, currentIndex, items])
-
-  const currentItem = items[currentIndex]
-
-  const renderContent = () => {
-    if (!currentItem) {
+  switch (currentItem.type) {
+    case 'image':
       return (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Nenhum conteúdo adicionado</h2>
-            <p>Adicione slides, imagens, sites ou planilhas para começar</p>
-          </div>
+        <div className="flex items-center justify-center h-full">
+          <img
+            src={currentItem.url}
+            alt={currentItem.title || 'Imagem'}
+            className="max-w-full max-h-full object-contain"
+            onError={(e) => {
+              e.target.src = 'data:image/svg+xml;base64,...' // imagem de fallback
+            }}
+          />
         </div>
       )
-    }
 
-    switch (currentItem.type) {
-      case 'image':
-        return (
-          <div className="flex items-center justify-center h-full">
-            <img 
-              src={currentItem.url} 
-              alt={currentItem.title || 'Imagem'}
-              className="max-w-full max-h-full object-contain"
-              onError={(e) => {
-                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm8gYW8gY2FycmVnYXIgaW1hZ2VtPC90ZXh0Pjwvc3ZnPg=='
-              }}
-            />
-          </div>
-        )
-      
-      case 'website':
-        return (
-          <iframe 
+    case 'website':
+      return (
+        <iframe
+          src={currentItem.url}
+          className="w-full h-full border-0"
+          title={currentItem.title || 'Website'}
+        />
+      )
+
+    case 'slide':
+      return (
+        <div className="flex items-center justify-center h-full">
+          <embed
             src={currentItem.url}
-            className="w-full h-full border-0"
-            title={currentItem.title || 'Website'}
+            type="application/pdf"
+            className="w-full h-full"
           />
-        )
-      
-      case 'slide':
-        return (
-          <div className="flex items-center justify-center h-full">
-            <embed 
-              src={currentItem.url}
-              type="application/pdf"
-              className="w-full h-full"
-            />
-          </div>
-        )
-      
-      case 'spreadsheet':
-        return (
-          <iframe 
-            src={currentItem.url}
-            className="w-full h-full border-0"
-            title={currentItem.title || 'Planilha'}
-          />
-        )
-      
-      default:
-        return (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>Tipo de conteúdo não suportado</p>
-          </div>
-        )
-    }
+        </div>
+      )
+
+    case 'spreadsheet':
+      return (
+        <iframe
+          src={currentItem.url}
+          className="w-full h-full border-0"
+          title={currentItem.title || 'Planilha'}
+        />
+      )
+
+    default:
+      return (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          <p>Tipo de conteúdo não suportado</p>
+        </div>
+      )
   }
+}
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header com controles */}
-      <div className="bg-card border-b p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Sala de Espera</h1>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPlaying(!isPlaying)}
-                disabled={items.length === 0}
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
-                disabled={items.length === 0}
-              >
-                <SkipForward className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
-          </div>
+ {/* Header com controles */}
+{!hideHeader && (
+  <div className="bg-card border-b p-4">
+    <div className="flex items-center justify-between">
+      <h1 className="text-2xl font-bold">Sala de Espera</h1>
+
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsPlaying(!isPlaying)}
+            disabled={items.length === 0}
+          >
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
+            disabled={items.length === 0}
+          >
+            <SkipForward className="w-4 h-4" />
+          </Button>
         </div>
-        
-        {items.length > 0 && (
-          <div className="mt-2 text-sm text-muted-foreground">
-            {currentIndex + 1} de {items.length} - {currentItem?.title || currentItem?.url}
-          </div>
-        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowSettings(!showSettings)}
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
       </div>
+    </div>
+
+    {items.length > 0 && (
+      <div className="mt-2 text-sm text-muted-foreground">
+        {currentIndex + 1} de {items.length} – {currentItem?.title || currentItem?.url}
+      </div>
+    )}
+  </div>
+)}
 
       {/* Área principal */}
       <div className="flex-1 flex">
@@ -350,17 +350,17 @@ function App() {
       </div>
 
       {/* Footer com RSS */}
-    {rssUrl.includes('rss.app/embed') && (
-  <div style={{ position: 'fixed', bottom: 0, width: '100%', zIndex: 1000 }}>
-    <iframe
-      src={rssUrl}
-      width="100%"
-      height="50"
-      frameBorder="0"
-      scrolling="no"
-    ></iframe>
-  </div>
-)}
+      {rssItems.length > 0 && (
+        <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
+          <div className="animate-marquee whitespace-nowrap">
+            {rssItems.map((item, index) => (
+              <span key={index} className="mx-8">
+                📰 {item.title}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
