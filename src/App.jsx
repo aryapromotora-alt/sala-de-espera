@@ -244,8 +244,83 @@ function App() {
                       <Label htmlFor="type">Tipo</Label>
                       <Select value={newItem.type} onValueChange={(value) => setNewItem({ ...newItem, type: value })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="image">Imagem</SelectItem>
+                          <SelectItem value="website">Site</SelectItem>
+                          <SelectItem value="slide">Slide (PDF)</SelectItem>
+                          <SelectItem value="spreadsheet">Planilha</SelectItem>
+                        </SelectContent>
                       </Select>
                     </div>
+
+                    <div>
+                    <div>
+                      <Label htmlFor="url">URL</Label>
+                      <Input
+                        id="url"
+                        value={newItem.url}
+                        onChange={(e) => setNewItem({ ...newItem, url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="title">Título (opcional)</Label>
+                      <Input
+                        id="title"
+                        value={newItem.title}
+                        onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                        placeholder="Título do conteúdo"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="duration">Duração (segundos)</Label>
+                      <Input
+                        id="duration"
+                        type="number"
+                        value={newItem.duration / 1000}
+                        onChange={(e) => setNewItem({ ...newItem, duration: parseInt(e.target.value) * 1000 })}
+                        min="1"
+                      />
+                    </div>
+
+                    <Button onClick={addItem} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar
+                    </Button>
+
+                    <Button onClick={clearPlaylist} variant="destructive" className="w-full">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Limpar Lista
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Lista de Conteúdo</h3>
+                  <div className="space-y-2">
+                    {items.map((item, index) => (
+                      <Card key={item.id} className={`p-2 ${index === currentIndex ? 'ring-2 ring-primary' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {item.title || item.url}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.type} - {item.duration / 1000}s
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 </div>
               </TabsContent>
@@ -294,6 +369,8 @@ function App() {
           </div>
         </div>
       )}
-    </div> {/* ← Este fecha o <div className="min-h-screen ..."> */}
+    </div>
   )
 }
+
+export default App
