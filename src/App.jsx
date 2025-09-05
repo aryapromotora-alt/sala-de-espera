@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Play, Pause, SkipForward, Settings, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Play, Pause, SkipForward, Settings, Plus, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import Parser from 'rss-parser'
 import './App.css'
 
@@ -28,8 +28,7 @@ function App() {
     title: ''
   })
 
-  const [hideHeader, setHideHeader] = useState(false)
-  const [showHeaderTemporarily, setShowHeaderTemporarily] = useState(false)
+  const [showHeader, setShowHeader] = useState(true)
 
   useEffect(() => {
     const savedPlaylists = localStorage.getItem('playlists')
@@ -71,14 +70,6 @@ function App() {
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
     localStorage.setItem('currentPlaylist', currentPlaylistName)
   }, [items, currentPlaylistName])
-
-  useEffect(() => {
-    if (isPlaying && items.length > 0) {
-      setHideHeader(true)
-    } else {
-      setHideHeader(false)
-    }
-  }, [isPlaying, items])
 
   // Função para detectar se é um RSS ticker do rss.app
   const isRssTicker = (url) => {
@@ -292,23 +283,24 @@ function App() {
     }
   }
 
-  // Função para mostrar o header permanentemente
-  const showHeaderPermanently = () => {
-    setShowHeaderTemporarily(true)
-    setHideHeader(false)
-  }
-
-  // Função para ocultar o header novamente
-  const hideHeaderAgain = () => {
-    if (isPlaying && items.length > 0) {
-      setHideHeader(true)
-      setShowHeaderTemporarily(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {(!hideHeader || showHeaderTemporarily) && (
+      {/* Botão de toggle no canto superior direito */}
+      {!showHeader && (
+        <div className="absolute top-4 right-4 z-50">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowHeader(true)}
+            className="bg-background/90 backdrop-blur-sm shadow-lg"
+            title="Mostrar controles"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {showHeader && (
         <div className="bg-card border-b p-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Sala de Espera</h1>
@@ -338,17 +330,14 @@ function App() {
               >
                 <Settings className="w-4 h-4" />
               </Button>
-              {/* Botão para ocultar header novamente quando estiver temporariamente visível */}
-              {showHeaderTemporarily && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={hideHeaderAgain}
-                  title="Ocultar controles"
-                >
-                  ✕
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHeader(false)}
+                title="Ocultar controles"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </Button>
             </div>
           </div>
           {contentItems.length > 0 && (
@@ -363,15 +352,6 @@ function App() {
       )}
 
       <div className="flex-1 flex relative">
-        {/* Área de hover na parte superior para mostrar header */}
-        {hideHeader && !showHeaderTemporarily && (
-          <div 
-            className="absolute top-0 left-0 w-full h-16 z-50 bg-transparent"
-            onMouseEnter={showHeaderPermanently}
-            title="Passe o mouse aqui para mostrar os controles"
-          />
-        )}
-        
         <div className="flex-1 bg-muted/20">
           {renderContent()}
         </div>
