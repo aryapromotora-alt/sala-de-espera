@@ -229,6 +229,11 @@ function App() {
 
   const currentItem = items[currentIndex]
 
+  // Função para encontrar o primeiro RSS ticker na playlist (se houver)
+  const getRssTickerItem = () => {
+    return items.find(item => item.type === 'rss-ticker')
+  }
+
   const renderContent = () => {
     if (!currentItem) {
       return (
@@ -261,15 +266,14 @@ function App() {
           />
         )
       case 'rss-ticker':
-        // Para RSS ticker, renderizamos apenas um fundo preto na área principal
-        // O ticker real será renderizado na parte inferior da tela
+        // Para RSS ticker, renderizamos o conteúdo como um website normal
+        // O ticker será exibido separadamente na parte inferior
         return (
-          <div className="w-full h-full bg-black flex items-center justify-center">
-            <div className="text-white text-center">
-              <h2 className="text-2xl font-bold mb-2">RSS Ticker Ativo</h2>
-              <p className="text-gray-300">O ticker está sendo exibido na parte inferior da tela</p>
-            </div>
-          </div>
+          <iframe
+            src={currentItem.url}
+            className="w-full h-full border-0"
+            title={currentItem.title || 'RSS Ticker'}
+          />
         )
       case 'slide':
         return (
@@ -297,6 +301,8 @@ function App() {
         )
     }
   }
+
+  const rssTickerItem = getRssTickerItem()
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -335,6 +341,9 @@ function App() {
           {items.length > 0 && (
             <div className="mt-2 text-sm text-muted-foreground">
               {currentIndex + 1} de {items.length} – {currentItem?.title || currentItem?.url}
+              {rssTickerItem && (
+                <span className="ml-2 text-green-600">• RSS Ticker ativo</span>
+              )}
             </div>
           )}
         </div>
@@ -355,12 +364,12 @@ function App() {
         </div>
 
         {/* RSS Ticker na parte inferior - NOVA IMPLEMENTAÇÃO */}
-        {currentItem && currentItem.type === 'rss-ticker' && (
+        {rssTickerItem && (
           <div className="absolute bottom-0 left-0 w-full h-20 z-30 bg-black/90 backdrop-blur-sm">
             <iframe
-              src={currentItem.url}
+              src={rssTickerItem.url}
               className="w-full h-full border-0"
-              title={currentItem.title || 'RSS Ticker'}
+              title={rssTickerItem.title || 'RSS Ticker'}
               style={{
                 backgroundColor: 'transparent',
                 border: 'none'
@@ -500,6 +509,9 @@ function App() {
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {item.type} • {item.duration / 1000}s
+                                {item.type === 'rss-ticker' && (
+                                  <span className="ml-1 text-green-600">• Ticker ativo</span>
+                                )}
                               </p>
                             </div>
                             <Button
