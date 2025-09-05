@@ -261,17 +261,14 @@ function App() {
           />
         )
       case 'rss-ticker':
+        // Para RSS ticker, renderizamos apenas um fundo preto na área principal
+        // O ticker real será renderizado na parte inferior da tela
         return (
-          <div className="flex items-center justify-center h-full bg-black">
-            <iframe
-              src={currentItem.url}
-              className="w-full h-full border-0"
-              title={currentItem.title || 'RSS Ticker'}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none'
-              }}
-            />
+          <div className="w-full h-full bg-black flex items-center justify-center">
+            <div className="text-white text-center">
+              <h2 className="text-2xl font-bold mb-2">RSS Ticker Ativo</h2>
+              <p className="text-gray-300">O ticker está sendo exibido na parte inferior da tela</p>
+            </div>
           </div>
         )
       case 'slide':
@@ -356,6 +353,21 @@ function App() {
         <div className="flex-1 bg-muted/20">
           {renderContent()}
         </div>
+
+        {/* RSS Ticker na parte inferior - NOVA IMPLEMENTAÇÃO */}
+        {currentItem && currentItem.type === 'rss-ticker' && (
+          <div className="absolute bottom-0 left-0 w-full h-20 z-30 bg-black/90 backdrop-blur-sm">
+            <iframe
+              src={currentItem.url}
+              className="w-full h-full border-0"
+              title={currentItem.title || 'RSS Ticker'}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none'
+              }}
+            />
+          </div>
+        )}
 
         {showSettings && (
           <div className="w-96 bg-card border-l p-4 overflow-y-auto">
@@ -466,40 +478,43 @@ function App() {
                       <Plus className="w-4 h-4 mr-2" />
                       Adicionar
                     </Button>
-
-                    <Button onClick={clearPlaylist} variant="destructive" className="w-full">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Limpar Lista
-                    </Button>
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="font-semibold mb-3">Lista de Conteúdo</h3>
-                  <div className="space-y-2">
-                    {items.map((item, index) => (
-                      <Card key={item.id} className={`p-2 ${index === currentIndex ? 'ring-2 ring-primary' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {item.title || item.url}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.type === 'rss-ticker' ? 'RSS Ticker' : item.type} - {item.duration / 1000}s
-                            </p>
+                {items.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold">Playlist: {currentPlaylistName}</h3>
+                      <Button onClick={clearPlaylist} variant="destructive" size="sm">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Limpar
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map((item, index) => (
+                        <Card key={item.id} className={`p-3 ${index === currentIndex ? 'ring-2 ring-primary' : ''}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {item.title || item.url}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {item.type} • {item.duration / 1000}s
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => removeItem(item.id)}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeItem(item.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </TabsContent>
 
               <TabsContent value="rss" className="space-y-4">
