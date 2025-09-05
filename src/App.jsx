@@ -29,7 +29,7 @@ function App() {
   })
 
   const [hideHeader, setHideHeader] = useState(false)
-  const [showHeaderOnHover, setShowHeaderOnHover] = useState(false)
+  const [showHeaderTemporarily, setShowHeaderTemporarily] = useState(false)
 
   useEffect(() => {
     const savedPlaylists = localStorage.getItem('playlists')
@@ -292,9 +292,23 @@ function App() {
     }
   }
 
+  // Função para mostrar o header permanentemente
+  const showHeaderPermanently = () => {
+    setShowHeaderTemporarily(true)
+    setHideHeader(false)
+  }
+
+  // Função para ocultar o header novamente
+  const hideHeaderAgain = () => {
+    if (isPlaying && items.length > 0) {
+      setHideHeader(true)
+      setShowHeaderTemporarily(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {(!hideHeader || showHeaderOnHover) && (
+      {(!hideHeader || showHeaderTemporarily) && (
         <div className="bg-card border-b p-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Sala de Espera</h1>
@@ -324,6 +338,17 @@ function App() {
               >
                 <Settings className="w-4 h-4" />
               </Button>
+              {/* Botão para ocultar header novamente quando estiver temporariamente visível */}
+              {showHeaderTemporarily && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={hideHeaderAgain}
+                  title="Ocultar controles"
+                >
+                  ✕
+                </Button>
+              )}
             </div>
           </div>
           {contentItems.length > 0 && (
@@ -338,12 +363,12 @@ function App() {
       )}
 
       <div className="flex-1 flex relative">
-        {/* Área de hover invisível na lateral direita */}
-        {hideHeader && (
+        {/* Área de hover na parte superior para mostrar header */}
+        {hideHeader && !showHeaderTemporarily && (
           <div 
-            className="absolute top-0 right-0 w-16 h-full z-50 bg-transparent"
-            onMouseEnter={() => setShowHeaderOnHover(true)}
-            onMouseLeave={() => setShowHeaderOnHover(false)}
+            className="absolute top-0 left-0 w-full h-16 z-50 bg-transparent"
+            onMouseEnter={showHeaderPermanently}
+            title="Passe o mouse aqui para mostrar os controles"
           />
         )}
         
