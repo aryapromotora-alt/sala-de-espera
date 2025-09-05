@@ -227,12 +227,12 @@ function App() {
     setItems([...items, newRssItem])
   }
 
-  const currentItem = items[currentIndex]
+  // Separar itens RSS ticker dos itens de conteúdo principal
+  const contentItems = items.filter(item => item.type !== 'rss-ticker')
+  const rssTickerItem = items.find(item => item.type === 'rss-ticker')
 
-  // Função para encontrar o primeiro RSS ticker na playlist (se houver)
-  const getRssTickerItem = () => {
-    return items.find(item => item.type === 'rss-ticker')
-  }
+  // Usar apenas os itens de conteúdo para navegação
+  const currentItem = contentItems[currentIndex]
 
   const renderContent = () => {
     if (!currentItem) {
@@ -265,16 +265,6 @@ function App() {
             title={currentItem.title || 'Website'}
           />
         )
-      case 'rss-ticker':
-        // Para RSS ticker, renderizamos o conteúdo como um website normal
-        // O ticker será exibido separadamente na parte inferior
-        return (
-          <iframe
-            src={currentItem.url}
-            className="w-full h-full border-0"
-            title={currentItem.title || 'RSS Ticker'}
-          />
-        )
       case 'slide':
         return (
           <div className="flex items-center justify-center h-full">
@@ -302,8 +292,6 @@ function App() {
     }
   }
 
-  const rssTickerItem = getRssTickerItem()
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {(!hideHeader || showHeaderOnHover) && (
@@ -316,15 +304,15 @@ function App() {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsPlaying(!isPlaying)}
-                  disabled={items.length === 0}
+                  disabled={contentItems.length === 0}
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
-                  disabled={items.length === 0}
+                  onClick={() => setCurrentIndex((prev) => (prev + 1) % contentItems.length)}
+                  disabled={contentItems.length === 0}
                 >
                   <SkipForward className="w-4 h-4" />
                 </Button>
@@ -338,9 +326,9 @@ function App() {
               </Button>
             </div>
           </div>
-          {items.length > 0 && (
+          {contentItems.length > 0 && (
             <div className="mt-2 text-sm text-muted-foreground">
-              {currentIndex + 1} de {items.length} – {currentItem?.title || currentItem?.url}
+              {currentIndex + 1} de {contentItems.length} – {currentItem?.title || currentItem?.url}
               {rssTickerItem && (
                 <span className="ml-2 text-green-600">• RSS Ticker ativo</span>
               )}
@@ -363,7 +351,7 @@ function App() {
           {renderContent()}
         </div>
 
-        {/* RSS Ticker na parte inferior - NOVA IMPLEMENTAÇÃO */}
+        {/* RSS Ticker na parte inferior - apenas se existir */}
         {rssTickerItem && (
           <div className="absolute bottom-0 left-0 w-full h-20 z-30 bg-black/90 backdrop-blur-sm">
             <iframe
@@ -500,30 +488,36 @@ function App() {
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      {items.map((item, index) => (
-                        <Card key={item.id} className={`p-3 ${index === currentIndex ? 'ring-2 ring-primary' : ''}`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {item.title || item.url}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.type} • {item.duration / 1000}s
-                                {item.type === 'rss-ticker' && (
-                                  <span className="ml-1 text-green-600">• Ticker ativo</span>
-                                )}
-                              </p>
+                      {items.map((item, index) => {
+                        // Calcular o índice correto para itens de conteúdo
+                        const contentItemIndex = contentItems.findIndex(contentItem => contentItem.id === item.id)
+                        const isCurrentContentItem = contentItemIndex === currentIndex && item.type !== 'rss-ticker'
+                        
+                        return (
+                          <Card key={item.id} className={`p-3 ${isCurrentContentItem ? 'ring-2 ring-primary' : ''}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {item.title || item.url}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.type} • {item.duration / 1000}s
+                                  {item.type === 'rss-ticker' && (
+                                    <span className="ml-1 text-green-600">• Ticker ativo</span>
+                                  )}
+                                </p>
+                              </div>
+                              <Button
+                                onClick={() => removeItem(item.id)}
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
-                            <Button
-                              onClick={() => removeItem(item.id)}
-                              variant="ghost"
-                              size="sm"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
+                          </Card>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
