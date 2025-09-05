@@ -17,6 +17,9 @@ function App() {
   const [rssItems, setRssItems] = useState([])
   const [showSettings, setShowSettings] = useState(false)
   const [isLoadingRss, setIsLoadingRss] = useState(false)
+  const [playlists, setPlaylists] = useState({})
+  const [currentPlaylistName, setCurrentPlaylistName] = useState('default')
+  const [newPlaylistName, setNewPlaylistName] = useState('')
 
   const [newItem, setNewItem] = useState({
     type: 'image',
@@ -26,34 +29,56 @@ function App() {
   })
 
   const [hideHeader, setHideHeader] = useState(false)
+  const [showHeaderOnHover, setShowHeaderOnHover] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('playlist')
+    const savedPlaylists = localStorage.getItem('playlists')
+    const savedCurrentPlaylist = localStorage.getItem('currentPlaylist')
+    
     try {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setItems(parsed)
+      if (savedPlaylists) {
+        const parsedPlaylists = JSON.parse(savedPlaylists)
+        setPlaylists(parsedPlaylists)
+        
+        const playlistName = savedCurrentPlaylist || 'default'
+        setCurrentPlaylistName(playlistName)
+        
+        if (parsedPlaylists[playlistName] && Array.isArray(parsedPlaylists[playlistName])) {
+          setItems(parsedPlaylists[playlistName])
+        }
+      } else {
+        // Migrar playlist antiga se existir
+        const oldPlaylist = localStorage.getItem('playlist')
+        if (oldPlaylist) {
+          const parsed = JSON.parse(oldPlaylist)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const newPlaylists = { default: parsed }
+            setPlaylists(newPlaylists)
+            setItems(parsed)
+            localStorage.setItem('playlists', JSON.stringify(newPlaylists))
+            localStorage.removeItem('playlist')
+          }
+        }
       }
     } catch (err) {
-      console.error('Erro ao carregar playlist:', err)
+      console.error('Erro ao carregar playlists:', err)
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('playlist', JSON.stringify(items))
-  }, [items])
+    const updatedPlaylists = { ...playlists, [currentPlaylistName]: items }
+    setPlaylists(updatedPlaylists)
+    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
+    localStorage.setItem('currentPlaylist', currentPlaylistName)
+  }, [items, currentPlaylistName])
 
   useEffect(() => {
     if (isPlaying && items.length > 0) {
       setHideHeader(true)
-    }
-  }, [isPlaying, items])
-
-  useEffect(() => {
-    if (!isPlaying) {
+    } else {
       setHideHeader(false)
     }
-  }, [isPlaying])
+  }, [isPlaying, items])
 
   const addItem = () => {
     if (newItem.url.trim()) {
@@ -77,7 +102,49 @@ function App() {
   const clearPlaylist = () => {
     setItems([])
     setCurrentIndex(0)
-    localStorage.removeItem('playlist')
+    const updatedPlaylists = { ...playlists, [currentPlaylistName]: [] }
+    setPlaylists(updatedPlaylists)
+    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
+  }
+
+  const createPlaylist = () => {
+    if (newPlaylistName.trim() && !playlists[newPlaylistName.trim()]) {
+      const playlistName = newPlaylistName.trim()
+      const updatedPlaylists = { ...playlists, [playlistName]: [] }
+      setPlaylists(updatedPlaylists)
+      setCurrentPlaylistName(playlistName)
+      setItems([])
+      setCurrentIndex(0)
+      setNewPlaylistName('')
+      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
+      localStorage.setItem('currentPlaylist', playlistName)
+    }
+  }
+
+  const switchPlaylist = (playlistName) => {
+    if (playlists[playlistName]) {
+      setCurrentPlaylistName(playlistName)
+      setItems(playlists[playlistName] || [])
+      setCurrentIndex(0)
+      localStorage.setItem('currentPlaylist', playlistName)
+    }
+  }
+
+  const deletePlaylist = (playlistName) => {
+    if (playlistName === 'default') return // Não permitir deletar a playlist padrão
+    
+    const updatedPlaylists = { ...playlists }
+    delete updatedPlaylists[playlistName]
+    setPlaylists(updatedPlaylists)
+    
+    if (currentPlaylistName === playlistName) {
+      setCurrentPlaylistName('default')
+      setItems(playlists['default'] || [])
+      setCurrentIndex(0)
+      localStorage.setItem('currentPlaylist', 'default')
+    }
+    
+    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
   }
 
   const fetchRSS = async () => {
@@ -96,17 +163,17 @@ function App() {
       const data = await response.json()
 
       if (data.contents.includes('<rss')) {
-  const feed = await parser.parseString(data.contents)
-  const items = feed.items.slice(0, 10).map(item => ({
-    title: item.title || 'Sem título',
-    link: item.link || '#',
-    pubDate: item.pubDate || ''
-  }))
-  setRssItems(items)
-} else {
-  // Se não for XML, assume que é embed
-  setRssItems([{ title: 'embed', link: rssUrl }])
-}
+        const feed = await parser.parseString(data.contents)
+        const items = feed.items.slice(0, 10).map(item => ({
+          title: item.title || 'Sem título',
+          link: item.link || '#',
+          pubDate: item.pubDate || ''
+        }))
+        setRssItems(items)
+      } else {
+        // Se não for XML, assume que é embed
+        setRssItems([{ title: 'embed', link: rssUrl }])
+      }
     } catch (error) {
       console.error('Erro ao buscar RSS:', error)
       const mockRssItems = [
@@ -143,9 +210,7 @@ function App() {
               src={currentItem.url}
               alt={currentItem.title || 'Imagem'}
               className="max-w-full max-h-full object-contain"
-              onError={(e) => {
-                e.target.src = 'data:image/svg+xml;base64,...'
-              }}
+
             />
           </div>
         )
@@ -186,7 +251,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {!hideHeader && (
+      {(!hideHeader || showHeaderOnHover) && (
         <div className="bg-card border-b p-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Sala de Espera</h1>
@@ -226,7 +291,16 @@ function App() {
         </div>
       )}
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex relative">
+        {/* Área de hover invisível na lateral direita */}
+        {hideHeader && (
+          <div 
+            className="absolute top-0 right-0 w-16 h-full z-50 bg-transparent"
+            onMouseEnter={() => setShowHeaderOnHover(true)}
+            onMouseLeave={() => setShowHeaderOnHover(false)}
+          />
+        )}
+        
         <div className="flex-1 bg-muted/20">
           {renderContent()}
         </div>
@@ -240,6 +314,49 @@ function App() {
               </TabsList>
 
               <TabsContent value="content" className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-3">Gerenciar Playlists</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="current-playlist">Playlist Atual</Label>
+                      <Select value={currentPlaylistName} onValueChange={switchPlaylist}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(playlists).map(name => (
+                            <SelectItem key={name} value={name}>
+                              {name} ({playlists[name]?.length || 0} itens)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nome da nova playlist"
+                        value={newPlaylistName}
+                        onChange={(e) => setNewPlaylistName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && createPlaylist()}
+                      />
+                      <Button onClick={createPlaylist} size="sm">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {currentPlaylistName !== 'default' && (
+                      <Button 
+                        onClick={() => deletePlaylist(currentPlaylistName)} 
+                        variant="destructive" 
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Deletar Playlist "{currentPlaylistName}"
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <h3 className="font-semibold mb-3">Adicionar Conteúdo</h3>
                   <div className="space-y-3">
@@ -360,25 +477,28 @@ function App() {
       </div>
 
       {/* Footer com RSS */}
-{rssItems.length > 0 && (
-  <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
-    {rssItems[0].title === 'embed' ? (
-      <iframe
-        src={rssItems[0].link}
-        width="100%"
-        height="60"
-        frameBorder="0"
-      />
-    ) : (
-      <div className="animate-marquee whitespace-nowrap">
-        {rssItems.map((item, index) => (
-          <span key={index} className="mx-8">
-            📰 {item.title}
-          </span>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+      {rssItems.length > 0 && (
+        <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
+          {rssItems[0].title === 'embed' ? (
+            <iframe
+              src={rssItems[0].link}
+              width="100%"
+              height="60"
+              frameBorder="0"
+            />
+          ) : (
+            <div className="animate-marquee whitespace-nowrap">
+              {rssItems.map((item, index) => (
+                <span key={index} className="mx-8">
+                  📰 {item.title}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default App
