@@ -80,9 +80,21 @@ function App() {
     }
   }, [isPlaying, items])
 
+  // Função para detectar se é um RSS ticker do rss.app
+  const isRssTicker = (url) => {
+    return url.includes('rss.app/embed/v1/ticker/') || url.includes('rss.app/embed/v1/marquee/')
+  }
+
   const addItem = () => {
     if (newItem.url.trim()) {
-      setItems([...items, { ...newItem, id: Date.now() }])
+      let itemType = newItem.type
+      
+      // Auto-detectar RSS tickers
+      if (isRssTicker(newItem.url)) {
+        itemType = 'rss-ticker'
+      }
+      
+      setItems([...items, { ...newItem, type: itemType, id: Date.now() }])
       setNewItem({
         type: 'image',
         url: '',
@@ -152,6 +164,17 @@ function App() {
 
     setIsLoadingRss(true)
     try {
+      // Se for um RSS Ticker do rss.app, não tentamos parsear como XML
+      if (isRssTicker(rssUrl)) {
+        setRssItems([{ 
+          title: 'RSS Ticker detectado',
+          link: rssUrl,
+          description: 'Este é um widget ticker do rss.app. Adicione-o como conteúdo para visualizar.'
+        }])
+        setIsLoadingRss(false)
+        return
+      }
+
       const parser = new Parser({
         customFields: {
           item: ['description', 'content:encoded']
@@ -162,7 +185,7 @@ function App() {
       const response = await fetch(proxyUrl)
       const data = await response.json()
 
-      if (data.contents.includes('<rss')) {
+      if (data.contents.includes("<rss")) {
         const feed = await parser.parseString(data.contents)
         const items = feed.items.slice(0, 10).map(item => ({
           title: item.title || 'Sem título',
@@ -171,8 +194,12 @@ function App() {
         }))
         setRssItems(items)
       } else {
-        // Se não for XML, assume que é embed
-        setRssItems([{ title: 'embed', link: rssUrl }])
+        // Se não for XML, assume que é embed genérico
+        setRssItems([{ 
+          title: 'Conteúdo embed detectado',
+          link: rssUrl,
+          description: 'Este URL não é um feed RSS tradicional. Adicione-o como tipo "Site" ou "RSS Ticker" na aba Conteúdo para visualizá-lo.'
+        }])
       }
     } catch (error) {
       console.error('Erro ao buscar RSS:', error)
@@ -188,6 +215,18 @@ function App() {
     }
   }
 
+  const addRssAsContent = (rssItem) => {
+    const itemType = isRssTicker(rssItem.link) ? 'rss-ticker' : 'website'
+    const newRssItem = {
+      type: itemType,
+      url: rssItem.link,
+      duration: 10000, // 10 segundos padrão para RSS
+      title: rssItem.title,
+      id: Date.now()
+    }
+    setItems([...items, newRssItem])
+  }
+
   const currentItem = items[currentIndex]
 
   const renderContent = () => {
@@ -196,7 +235,7 @@ function App() {
         <div className="flex items-center justify-center h-full text-muted-foreground">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-4">Nenhum conteúdo adicionado</h2>
-            <p>Adicione slides, imagens, sites ou planilhas para começar</p>
+            <p>Adicione slides, imagens, sites ou RSS tickers para começar</p>
           </div>
         </div>
       )
@@ -210,7 +249,6 @@ function App() {
               src={currentItem.url}
               alt={currentItem.title || 'Imagem'}
               className="max-w-full max-h-full object-contain"
-
             />
           </div>
         )
@@ -221,6 +259,20 @@ function App() {
             className="w-full h-full border-0"
             title={currentItem.title || 'Website'}
           />
+        )
+      case 'rss-ticker':
+        return (
+          <div className="flex items-center justify-center h-full bg-black">
+            <iframe
+              src={currentItem.url}
+              className="w-full h-full border-0"
+              title={currentItem.title || 'RSS Ticker'}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none'
+              }}
+            />
+          </div>
         )
       case 'slide':
         return (
@@ -367,6 +419,7 @@ function App() {
                         <SelectContent>
                           <SelectItem value="image">Imagem</SelectItem>
                           <SelectItem value="website">Site</SelectItem>
+                          <SelectItem value="rss-ticker">RSS Ticker</SelectItem>
                           <SelectItem value="slide">Slide (PDF)</SelectItem>
                           <SelectItem value="spreadsheet">Planilha</SelectItem>
                         </SelectContent>
@@ -381,6 +434,11 @@ function App() {
                         onChange={(e) => setNewItem({ ...newItem, url: e.target.value })}
                         placeholder="https://..."
                       />
+                      {newItem.url && isRssTicker(newItem.url) && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ RSS Ticker detectado automaticamente
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -427,7 +485,7 @@ function App() {
                               {item.title || item.url}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {item.type} - {item.duration / 1000}s
+                              {item.type === 'rss-ticker' ? 'RSS Ticker' : item.type} - {item.duration / 1000}s
                             </p>
                           </div>
                           <Button
@@ -446,59 +504,77 @@ function App() {
 
               <TabsContent value="rss" className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-3">Feed RSS</h3>
+                  <h3 className="font-semibold mb-3">Buscar RSS Feed</h3>
                   <div className="space-y-3">
                     <div>
-                      <Label htmlFor="rss-url">URL do RSS</Label>
+                      <Label htmlFor="rss-url">URL do RSS ou Ticker</Label>
                       <Input
                         id="rss-url"
                         value={rssUrl}
                         onChange={(e) => setRssUrl(e.target.value)}
-                        placeholder="https://exemplo.com/rss.xml"
+                        placeholder="https://rss.app/embed/v1/ticker/..."
                       />
+                      {rssUrl && isRssTicker(rssUrl) && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ RSS Ticker do rss.app detectado
+                        </p>
+                      )}
                     </div>
-
-                    <Button onClick={fetchRSS} className="w-full" disabled={isLoadingRss}>
+                    <Button onClick={fetchRSS} disabled={isLoadingRss} className="w-full">
                       {isLoadingRss ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Carregando...
                         </>
                       ) : (
-                        'Carregar RSS'
+                        'Buscar RSS'
                       )}
                     </Button>
                   </div>
                 </div>
+
+                {rssItems.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Itens Encontrados</h3>
+                    <div className="space-y-2">
+                      {rssItems.map((item, index) => (
+                        <Card key={index} className="p-3">
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium line-clamp-2">
+                              {item.title}
+                            </h4>
+                            {item.pubDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(item.pubDate).toLocaleDateString('pt-BR')}
+                              </p>
+                            )}
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground">
+                                {item.description}
+                              </p>
+                            )}
+                            <Button
+                              size="sm"
+                              onClick={() => addRssAsContent(item)}
+                              className="w-full"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Adicionar à Playlist
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
         )}
       </div>
-
-      {/* Footer com RSS */}
-      {rssItems.length > 0 && (
-        <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
-          {rssItems[0].title === 'embed' ? (
-            <iframe
-              src={rssItems[0].link}
-              width="100%"
-              height="60"
-              frameBorder="0"
-            />
-          ) : (
-            <div className="animate-marquee whitespace-nowrap">
-              {rssItems.map((item, index) => (
-                <span key={index} className="mx-8">
-                  📰 {item.title}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
 
 export default App
+
