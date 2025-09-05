@@ -95,15 +95,18 @@ function App() {
       const response = await fetch(proxyUrl)
       const data = await response.json()
 
-      if (data.contents) {
-        const feed = await parser.parseString(data.contents)
-        const items = feed.items.slice(0, 10).map(item => ({
-          title: item.title || 'Sem título',
-          link: item.link || '#',
-          pubDate: item.pubDate || ''
-        }))
-        setRssItems(items)
-      }
+      if (data.contents.includes('<rss')) {
+  const feed = await parser.parseString(data.contents)
+  const items = feed.items.slice(0, 10).map(item => ({
+    title: item.title || 'Sem título',
+    link: item.link || '#',
+    pubDate: item.pubDate || ''
+  }))
+  setRssItems(items)
+} else {
+  // Se não for XML, assume que é embed
+  setRssItems([{ title: 'embed', link: rssUrl }])
+}
     } catch (error) {
       console.error('Erro ao buscar RSS:', error)
       const mockRssItems = [
@@ -357,19 +360,25 @@ function App() {
       </div>
 
       {/* Footer com RSS */}
-      {rssItems.length > 0 && (
-        <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
-          <div className="animate-marquee whitespace-nowrap">
-            {rssItems.map((item, index) => (
-              <span key={index} className="mx-8">
-                📰 {item.title}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+{rssItems.length > 0 && (
+  <div className="bg-primary text-primary-foreground p-2 overflow-hidden">
+    {rssItems[0].title === 'embed' ? (
+      <iframe
+        src={rssItems[0].link}
+        width="100%"
+        height="60"
+        frameBorder="0"
+      />
+    ) : (
+      <div className="animate-marquee whitespace-nowrap">
+        {rssItems.map((item, index) => (
+          <span key={index} className="mx-8">
+            📰 {item.title}
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
 export default App
