@@ -549,15 +549,19 @@ function App() {
 
         {/* RSS Ticker na parte inferior - apenas se existir */}
         {rssTickerItem && (
-  <div className="fixed bottom-0 left-0 w-full z-50">
+  <div
+    className="fixed bottom-0 left-0 w-full z-50"
+    style={{ background: 'transparent' }}
+  >
     <iframe
       src={rssTickerItem.url}
       style={{
         width: '100%',
-        height: '60px', // altura exata do ticker
+        height: '60px',
         border: 'none',
         backgroundColor: 'transparent'
       }}
+      allowtransparency="true"
       title={rssTickerItem.title || 'RSS Ticker'}
     />
   </div>
