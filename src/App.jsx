@@ -459,7 +459,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-20">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Botão de toggle no canto superior direito */}
       {!showHeader && (
         <div className="absolute top-4 right-4 z-50">
@@ -549,19 +549,19 @@ function App() {
 
         {/* RSS Ticker na parte inferior - apenas se existir */}
         {rssTickerItem && (
-          <div className="fixed bottom-0 left-0 w-full h-20 z-50">
-            <iframe
-              src={rssTickerItem.url}
-              className="w-full h-full border-0"
-              title={rssTickerItem.title || 'RSS Ticker'}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none'
-              }}
-            />
-          </div>
-        )}
-
+  <div className="fixed bottom-0 left-0 w-full z-50">
+    <iframe
+      src={rssTickerItem.url}
+      style={{
+        width: '100%',
+        height: '60px', // altura exata do ticker
+        border: 'none',
+        backgroundColor: 'transparent'
+      }}
+      title={rssTickerItem.title || 'RSS Ticker'}
+    />
+  </div>
+)}
         {showSettings && (
           <div className="w-96 bg-card border-l p-4 overflow-y-auto">
             <Tabs defaultValue="content" className="w-full">
