@@ -459,7 +459,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-20">
       {/* Botão de toggle no canto superior direito */}
       {!showHeader && (
         <div className="absolute top-4 right-4 z-50">
