@@ -549,7 +549,7 @@ function App() {
 
         {/* RSS Ticker na parte inferior - apenas se existir */}
         {rssTickerItem && (
-          <div className="absolute bottom-0 left-0 w-full h-20 z-30 bg-black/90 backdrop-blur-sm">
+          <div className="absolute bottom-0 left-0 w-full h-20 z-30">
             <iframe
               src={rssTickerItem.url}
               className="w-full h-full border-0"
