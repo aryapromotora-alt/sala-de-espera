@@ -1,21 +1,21 @@
 from flask import Blueprint, request, jsonify
 from src.models.playlist import db, Playlist, UserSession
-import uuid
 import json
 
 playlist_bp = Blueprint('playlist', __name__)
 
 def get_or_create_session(session_id=None):
-    """Obtém ou cria uma sessão de usuário"""
+    """Obtém ou cria uma sessão global compartilhada"""
+    # Força sempre usar um session_id fixo
     if not session_id:
-        session_id = str(uuid.uuid4())
+        session_id = "global"
     
     session = UserSession.query.filter_by(session_id=session_id).first()
     if not session:
         session = UserSession(session_id=session_id)
         db.session.add(session)
         
-        # Criar playlist padrão para nova sessão
+        # Criar playlist padrão para a sessão global
         default_playlist = Playlist(name='default', user_id=session_id, items=[])
         db.session.add(default_playlist)
         
@@ -25,11 +25,8 @@ def get_or_create_session(session_id=None):
 
 @playlist_bp.route('/session', methods=['POST'])
 def create_or_get_session():
-    """Cria ou obtém uma sessão de usuário"""
-    data = request.get_json() or {}
-    session_id = data.get('session_id')
-    
-    session = get_or_create_session(session_id)
+    """Cria ou obtém a sessão global"""
+    session = get_or_create_session("global")
     
     return jsonify({
         'success': True,
@@ -38,9 +35,9 @@ def create_or_get_session():
 
 @playlist_bp.route('/playlists/<session_id>', methods=['GET'])
 def get_playlists(session_id):
-    """Obtém todas as playlists de um usuário"""
-    session = get_or_create_session(session_id)
-    playlists = Playlist.query.filter_by(user_id=session_id).all()
+    """Obtém todas as playlists da sessão global"""
+    session = get_or_create_session("global")
+    playlists = Playlist.query.filter_by(user_id="global").all()
     
     return jsonify({
         'success': True,
@@ -51,7 +48,7 @@ def get_playlists(session_id):
 @playlist_bp.route('/playlists/<session_id>/<playlist_name>', methods=['GET'])
 def get_playlist(session_id, playlist_name):
     """Obtém uma playlist específica"""
-    playlist = Playlist.query.filter_by(user_id=session_id, name=playlist_name).first()
+    playlist = Playlist.query.filter_by(user_id="global", name=playlist_name).first()
     
     if not playlist:
         return jsonify({
@@ -67,10 +64,10 @@ def get_playlist(session_id, playlist_name):
 @playlist_bp.route('/playlists/<session_id>/<playlist_name>', methods=['POST'])
 def create_playlist(session_id, playlist_name):
     """Cria uma nova playlist"""
-    session = get_or_create_session(session_id)
+    session = get_or_create_session("global")
     
     # Verificar se já existe
-    existing = Playlist.query.filter_by(user_id=session_id, name=playlist_name).first()
+    existing = Playlist.query.filter_by(user_id="global", name=playlist_name).first()
     if existing:
         return jsonify({
             'success': False,
@@ -80,7 +77,7 @@ def create_playlist(session_id, playlist_name):
     data = request.get_json() or {}
     items = data.get('items', [])
     
-    playlist = Playlist(name=playlist_name, user_id=session_id, items=items)
+    playlist = Playlist(name=playlist_name, user_id="global", items=items)
     db.session.add(playlist)
     db.session.commit()
     
@@ -92,7 +89,7 @@ def create_playlist(session_id, playlist_name):
 @playlist_bp.route('/playlists/<session_id>/<playlist_name>', methods=['PUT'])
 def update_playlist(session_id, playlist_name):
     """Atualiza uma playlist existente"""
-    playlist = Playlist.query.filter_by(user_id=session_id, name=playlist_name).first()
+    playlist = Playlist.query.filter_by(user_id="global", name=playlist_name).first()
     
     if not playlist:
         return jsonify({
@@ -120,7 +117,7 @@ def delete_playlist(session_id, playlist_name):
             'error': 'Não é possível deletar a playlist padrão'
         }), 400
     
-    playlist = Playlist.query.filter_by(user_id=session_id, name=playlist_name).first()
+    playlist = Playlist.query.filter_by(user_id="global", name=playlist_name).first()
     
     if not playlist:
         return jsonify({
@@ -131,7 +128,7 @@ def delete_playlist(session_id, playlist_name):
     db.session.delete(playlist)
     
     # Se era a playlist atual, mudar para default
-    session = UserSession.query.filter_by(session_id=session_id).first()
+    session = UserSession.query.filter_by(session_id="global").first()
     if session and session.current_playlist == playlist_name:
         session.current_playlist = 'default'
     
@@ -144,7 +141,7 @@ def delete_playlist(session_id, playlist_name):
 
 @playlist_bp.route('/session/<session_id>/current-playlist', methods=['PUT'])
 def set_current_playlist(session_id):
-    """Define a playlist atual do usuário"""
+    """Define a playlist atual da sessão global"""
     data = request.get_json() or {}
     playlist_name = data.get('playlist_name')
     
@@ -154,10 +151,10 @@ def set_current_playlist(session_id):
             'error': 'Nome da playlist é obrigatório'
         }), 400
     
-    session = get_or_create_session(session_id)
+    session = get_or_create_session("global")
     
     # Verificar se a playlist existe
-    playlist = Playlist.query.filter_by(user_id=session_id, name=playlist_name).first()
+    playlist = Playlist.query.filter_by(user_id="global", name=playlist_name).first()
     if not playlist:
         return jsonify({
             'success': False,
@@ -181,4 +178,3 @@ def health_check():
         'total_playlists': Playlist.query.count(),
         'total_sessions': UserSession.query.count()
     })
-
