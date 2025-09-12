@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react"
 import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -22,15 +23,23 @@ function Carousel({
   orientation = "horizontal",
   opts,
   setApi,
-  plugins,
+  plugins = [],
   className,
   children,
+  autoplay = true,      // 🔹 novo
+  interval = 5000,      // 🔹 novo (5s por padrão)
   ...props
 }) {
+  const autoplayPlugin = React.useMemo(() => {
+    if (!autoplay) return null
+    return Autoplay({ delay: interval, stopOnInteraction: false })
+  }, [autoplay, interval])
+
   const [carouselRef, api] = useEmblaCarousel({
     ...opts,
     axis: orientation === "horizontal" ? "x" : "y",
-  }, plugins)
+  }, autoplayPlugin ? [...plugins, autoplayPlugin] : plugins)
+
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
 
