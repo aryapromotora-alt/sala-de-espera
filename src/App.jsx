@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { Play, Pause, SkipForward, Settings, Plus, Trash2, Loader2, ChevronDown, ChevronUp, Wifi, WifiOff } from 'lucide-react'
-import Parser from 'rss-parser'
+
 import './App.css'
 
 function App() {
@@ -327,6 +327,26 @@ function App() {
     }
   }
 
+  const parseRSSXML = (xmlString) => {
+    try {
+      const parser = new DOMParser()
+      const xmlDoc = parser.parseFromString(xmlString, 'text/xml')
+      
+      const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 10).map(item => {
+        const title = item.querySelector('title')?.textContent || 'Sem título'
+        const link = item.querySelector('link')?.textContent || '#'
+        const pubDate = item.querySelector('pubDate')?.textContent || ''
+        
+        return { title, link, pubDate }
+      })
+      
+      return items
+    } catch (error) {
+      console.error('Erro ao parsear RSS XML:', error)
+      return []
+    }
+  }
+
   const fetchRSS = async () => {
     if (!rssUrl.trim()) return
 
@@ -343,24 +363,17 @@ function App() {
         return
       }
 
-      const parser = new Parser({
-        customFields: {
-          item: ['description', 'content:encoded']
-        }
-      })
-
       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
       const response = await fetch(proxyUrl)
       const data = await response.json()
 
-      if (data.contents.includes("<rss")) {
-        const feed = await parser.parseString(data.contents)
-        const items = feed.items.slice(0, 10).map(item => ({
-          title: item.title || 'Sem título',
-          link: item.link || '#',
-          pubDate: item.pubDate || ''
-        }))
-        setRssItems(items)
+      if (data.contents && (data.contents.includes("<rss") || data.contents.includes("<feed"))) {
+        const items = parseRSSXML(data.contents)
+        if (items.length > 0) {
+          setRssItems(items)
+        } else {
+          throw new Error('Nenhum item encontrado no RSS')
+        }
       } else {
         // Se não for XML, assume que é embed genérico
         setRssItems([{ 
