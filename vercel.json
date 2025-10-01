@@ -21,5 +21,6 @@
       "dest": "/$1"
     }
   ],
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install --no-frozen-lockfile"
 }
