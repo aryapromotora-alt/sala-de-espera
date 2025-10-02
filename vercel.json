@@ -1,16 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "src/api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    }
-  ],
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "routes": [
     {
       "src": "/api/(.*)",
@@ -21,6 +11,5 @@
       "dest": "/$1"
     }
   ],
-  "outputDirectory": "dist",
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "outputDirectory": "dist"
 }
