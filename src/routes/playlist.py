@@ -27,7 +27,7 @@ def get_or_create_session(session_id=None):
 def create_or_get_session():
     """Cria ou obtém uma sessão de usuário"""
     data = request.get_json() or {}
-    session_id = data.get('session_id')
+    session_id = data.get("session_id") or request.headers.get("X-Session-ID")
     
     session = get_or_create_session(session_id)
     

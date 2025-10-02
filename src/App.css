@@ -119,6 +119,13 @@
   }
 }
 
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--background); /* ou transparent se quiser eliminar qualquer fundo */
+  overflow: hidden; /* opcional: evita scroll extra que pode causar a faixa preta */
+}
 
 /* Estilos específicos da aplicação */
 .animate-marquee {
