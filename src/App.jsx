@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Play, Pause, SkipForward, Settings, Plus, Trash2, Loader2, ChevronDown, ChevronUp, Wifi, WifiOff } from 'lucide-react'
+import { Play, Pause, SkipForward, Settings, Plus, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import Parser from 'rss-parser'
 import './App.css'
 
@@ -20,9 +20,6 @@ function App() {
   const [playlists, setPlaylists] = useState({})
   const [currentPlaylistName, setCurrentPlaylistName] = useState('default')
   const [newPlaylistName, setNewPlaylistName] = useState('')
-  const [sessionId, setSessionId] = useState(null)
-  const [isOnline, setIsOnline] = useState(true)
-  const [isSyncing, setIsSyncing] = useState(false)
 
   const [newItem, setNewItem] = useState({
     type: 'image',
@@ -33,197 +30,46 @@ function App() {
 
   const [showHeader, setShowHeader] = useState(true)
 
-  // API Base URL - pode ser configurado para produção
-  const API_BASE = '/api'
-
-  // Funções de API
-  const apiCall = async (endpoint, options = {}) => {
-    try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
-        },
-        ...options
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-      
-      return await response.json()
-    } catch (error) {
-      console.error('API Error:', error)
-      setIsOnline(false)
-      throw error
-    }
-  }
-
-  const createSession = async () => {
-    try {
-      const response = await apiCall('/session', { method: 'POST' })
-      if (response.success) {
-        setSessionId(response.session.session_id)
-        localStorage.setItem('sessionId', response.session.session_id)
-        setIsOnline(true)
-        return response.session.session_id
-      }
-    } catch (error) {
-      console.error('Erro ao criar sessão:', error)
-      setIsOnline(false)
-      return null
-    }
-  }
-
-  const loadPlaylistsFromServer = async (sessionId) => {
-    try {
-      const response = await apiCall(`/playlists/${sessionId}`)
-      if (response.success) {
-        setIsOnline(true)
-        return response.playlists
-      }
-    } catch (error) {
-      console.error('Erro ao carregar playlists do servidor:', error)
-      setIsOnline(false)
-      return null
-    }
-  }
-
-  const savePlaylistToServer = async (sessionId, playlistName, items) => {
-    try {
-      setIsSyncing(true)
-      const response = await apiCall(`/playlists/${sessionId}/${playlistName}`, {
-        method: 'PUT',
-        body: JSON.stringify({ items })
-      })
-      if (response.success) {
-        setIsOnline(true)
-      }
-    } catch (error) {
-      console.error('Erro ao salvar playlist no servidor:', error)
-      setIsOnline(false)
-    } finally {
-      setIsSyncing(false)
-    }
-  }
-
-  const setCurrentPlaylistOnServer = async (sessionId, playlistName) => {
-    try {
-      await apiCall(`/session/${sessionId}/current-playlist`, {
-        method: 'PUT',
-        body: JSON.stringify({ current_playlist: playlistName })
-      })
-      setIsOnline(true)
-    } catch (error) {
-      console.error('Erro ao definir playlist atual no servidor:', error)
-      setIsOnline(false)
-    }
-  }
-
-  const deletePlaylistFromServer = async (sessionId, playlistName) => {
-    try {
-      await apiCall(`/playlists/${sessionId}/${playlistName}`, {
-        method: 'DELETE'
-      })
-      setIsOnline(true)
-    } catch (error) {
-      console.error('Erro ao deletar playlist do servidor:', error)
-      setIsOnline(false)
-    }
-  }
-
-  // Inicialização
   useEffect(() => {
-    const initializeApp = async () => {
-      // Tentar obter sessionId do localStorage
-      let storedSessionId = localStorage.getItem('sessionId')
-      
-      if (!storedSessionId) {
-        // Criar nova sessão
-        storedSessionId = await createSession()
-      } else {
-        setSessionId(storedSessionId)
-      }
-
-      if (storedSessionId) {
-        // Tentar carregar dados do servidor
-        const serverPlaylists = await loadPlaylistsFromServer(storedSessionId)
+    const savedPlaylists = localStorage.getItem('playlists')
+    const savedCurrentPlaylist = localStorage.getItem('currentPlaylist')
+    
+    try {
+      if (savedPlaylists) {
+        const parsedPlaylists = JSON.parse(savedPlaylists)
+        setPlaylists(parsedPlaylists)
         
-        if (serverPlaylists && Object.keys(serverPlaylists).length > 0) {
-          // Usar dados do servidor
-          setPlaylists(serverPlaylists)
-          const currentPlaylist = localStorage.getItem('currentPlaylist') || 'default'
-          setCurrentPlaylistName(currentPlaylist)
-          if (serverPlaylists[currentPlaylist]) {
-            setItems(serverPlaylists[currentPlaylist])
-          }
-        } else {
-          // Fallback para localStorage
-          loadFromLocalStorage()
+        const playlistName = savedCurrentPlaylist || 'default'
+        setCurrentPlaylistName(playlistName)
+        
+        if (parsedPlaylists[playlistName] && Array.isArray(parsedPlaylists[playlistName])) {
+          setItems(parsedPlaylists[playlistName])
         }
       } else {
-        // Fallback para localStorage se não conseguir criar sessão
-        loadFromLocalStorage()
-      }
-    }
-
-    const loadFromLocalStorage = () => {
-      const savedPlaylists = localStorage.getItem('playlists')
-      const savedCurrentPlaylist = localStorage.getItem('currentPlaylist')
-      
-      try {
-        if (savedPlaylists) {
-          const parsedPlaylists = JSON.parse(savedPlaylists)
-          setPlaylists(parsedPlaylists)
-          
-          const playlistName = savedCurrentPlaylist || 'default'
-          setCurrentPlaylistName(playlistName)
-          
-          if (parsedPlaylists[playlistName] && Array.isArray(parsedPlaylists[playlistName])) {
-            setItems(parsedPlaylists[playlistName])
-          }
-        } else {
-          // Migrar playlist antiga se existir
-          const oldPlaylist = localStorage.getItem('playlist')
-          if (oldPlaylist) {
-            const parsed = JSON.parse(oldPlaylist)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const newPlaylists = { default: parsed }
-              setPlaylists(newPlaylists)
-              setItems(parsed)
-              localStorage.setItem('playlists', JSON.stringify(newPlaylists))
-              localStorage.removeItem('playlist')
-            }
+        // Migrar playlist antiga se existir
+        const oldPlaylist = localStorage.getItem('playlist')
+        if (oldPlaylist) {
+          const parsed = JSON.parse(oldPlaylist)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const newPlaylists = { default: parsed }
+            setPlaylists(newPlaylists)
+            setItems(parsed)
+            localStorage.setItem('playlists', JSON.stringify(newPlaylists))
+            localStorage.removeItem('playlist')
           }
         }
-      } catch (err) {
-        console.error('Erro ao carregar playlists:', err)
       }
+    } catch (err) {
+      console.error('Erro ao carregar playlists:', err)
     }
-
-    initializeApp()
   }, [])
 
-  // Sincronização automática
   useEffect(() => {
-    const syncData = async () => {
-      if (sessionId && isOnline) {
-        // Salvar playlist atual no servidor
-        await savePlaylistToServer(sessionId, currentPlaylistName, items)
-        await setCurrentPlaylistOnServer(sessionId, currentPlaylistName)
-      }
-      
-      // Sempre salvar no localStorage como backup
-      const updatedPlaylists = { ...playlists, [currentPlaylistName]: items }
-      setPlaylists(updatedPlaylists)
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-      localStorage.setItem('currentPlaylist', currentPlaylistName)
-    }
-
-    if (items.length > 0 || Object.keys(playlists).length > 0) {
-      syncData()
-    }
-  }, [items, currentPlaylistName, sessionId, isOnline])
+    const updatedPlaylists = { ...playlists, [currentPlaylistName]: items }
+    setPlaylists(updatedPlaylists)
+    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
+    localStorage.setItem('currentPlaylist', currentPlaylistName)
+  }, [items, currentPlaylistName])
 
   // Função para detectar se é um RSS ticker do rss.app
   const isRssTicker = (url) => {
@@ -256,19 +102,15 @@ function App() {
     }
   }
 
-  const clearPlaylist = async () => {
+  const clearPlaylist = () => {
     setItems([])
     setCurrentIndex(0)
     const updatedPlaylists = { ...playlists, [currentPlaylistName]: [] }
     setPlaylists(updatedPlaylists)
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-    
-    if (sessionId && isOnline) {
-      await savePlaylistToServer(sessionId, currentPlaylistName, [])
-    }
   }
 
-  const createPlaylist = async () => {
+  const createPlaylist = () => {
     if (newPlaylistName.trim() && !playlists[newPlaylistName.trim()]) {
       const playlistName = newPlaylistName.trim()
       const updatedPlaylists = { ...playlists, [playlistName]: [] }
@@ -279,28 +121,19 @@ function App() {
       setNewPlaylistName('')
       localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
       localStorage.setItem('currentPlaylist', playlistName)
-      
-      if (sessionId && isOnline) {
-        await savePlaylistToServer(sessionId, playlistName, [])
-        await setCurrentPlaylistOnServer(sessionId, playlistName)
-      }
     }
   }
 
-  const switchPlaylist = async (playlistName) => {
+  const switchPlaylist = (playlistName) => {
     if (playlists[playlistName]) {
       setCurrentPlaylistName(playlistName)
       setItems(playlists[playlistName] || [])
       setCurrentIndex(0)
       localStorage.setItem('currentPlaylist', playlistName)
-      
-      if (sessionId && isOnline) {
-        await setCurrentPlaylistOnServer(sessionId, playlistName)
-      }
     }
   }
 
-  const deletePlaylist = async (playlistName) => {
+  const deletePlaylist = (playlistName) => {
     if (playlistName === 'default') return // Não permitir deletar a playlist padrão
     
     const updatedPlaylists = { ...playlists }
@@ -312,17 +145,9 @@ function App() {
       setItems(playlists['default'] || [])
       setCurrentIndex(0)
       localStorage.setItem('currentPlaylist', 'default')
-      
-      if (sessionId && isOnline) {
-        await setCurrentPlaylistOnServer(sessionId, 'default')
-      }
     }
     
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists))
-    
-    if (sessionId && isOnline) {
-      await deletePlaylistFromServer(sessionId, playlistName)
-    }
   }
 
   const fetchRSS = async () => {
@@ -480,22 +305,6 @@ function App() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Sala de Espera</h1>
             <div className="flex items-center gap-4">
-              {/* Indicador de status online/offline */}
-              <div className="flex items-center gap-2 text-sm">
-                {isOnline ? (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <Wifi className="w-4 h-4" />
-                    <span>Online</span>
-                    {isSyncing && <Loader2 className="w-3 h-3 animate-spin" />}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-red-600">
-                    <WifiOff className="w-4 h-4" />
-                    <span>Offline</span>
-                  </div>
-                )}
-              </div>
-              
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
